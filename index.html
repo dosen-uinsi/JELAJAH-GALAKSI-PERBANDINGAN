@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="id" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JELAJAH GALAKSI "PERBANDINGAN"</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Outfit', sans-serif; box-sizing: border-box; }
+    
+    body {
+      background-color: #1a1a2e; 
+      color: #e0e0ff;
+      overflow: hidden; 
+    }
+
+    /* --- GAYA JUDUL MODERN & PROFESIONAL --- */
+    .title-modern {
+        background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 50%, #38bdf8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 4px 20px rgba(56, 189, 248, 0.4); 
+        letter-spacing: 0.05em; 
+    }
+
+    .standard-panel {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Drag Items */
+    .drag-item {
+      cursor: grab;
+      user-select: none;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+    }
+    .drag-item:active { cursor: grabbing; }
+    .drag-item:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
+    
+    .drag-item.selected {
+      transform: scale(1.1);
+      box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.8), 0 8px 20px rgba(0,0,0,0.4);
+      z-index: 10;
+    }
+
+    /* Efek Khusus Elemen Target (Glowing Gold) */
+    @keyframes breath-glow-gold {
+      0%, 100% { box-shadow: 0 0 15px 2px rgba(251, 191, 36, 0.5); transform: translateY(0); }
+      50% { box-shadow: 0 0 25px 8px rgba(251, 191, 36, 0.8); transform: translateY(-4px) scale(1.02); }
+    }
+    .is-target {
+      animation: breath-glow-gold 2s ease-in-out infinite !important;
+      border: 2px solid #fbbf24;
+    }
+
+    /* Drop Zones */
+    .drop-zone {
+      transition: all 0.2s ease;
+      cursor: pointer;
+      background: rgba(255,255,255,0.03);
+      border-color: rgba(255,255,255,0.2);
+    }
+    .drop-zone:hover:not(.filled) { background: rgba(255,255,255,0.08); }
+    .drop-zone.drag-over {
+      border-color: #fbbf24 !important;
+      background: rgba(251, 191, 36, 0.1) !important;
+      transform: scale(1.05);
+    }
+    .drop-zone.filled:hover { opacity: 0.8; }
+
+    /* Animations */
+    @keyframes pulse-soft {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    .operator { animation: pulse-soft 2s ease-in-out infinite; color: #60a5fa; }
+    
+    @keyframes pop-in {
+      0% { transform: scale(0.8); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .pop { animation: pop-in 0.3s ease-out; }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+    .shake-anim { animation: shake 0.4s ease-in-out both; }
+
+    @keyframes rocket-bob {
+      0%, 100% { transform: translateY(-50%) rotate(45deg); }
+      50% { transform: translateY(-57%) rotate(45deg); }
+    }
+    @keyframes simple-bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-15px); }
+    }
+    @keyframes spin-disc {
+      100% { transform: rotate(360deg); }
+    }
+
+    #rocket {
+      transform-origin: center;
+      animation: rocket-bob 3s ease-in-out infinite;
+      transition: left 1000ms ease-out; 
+      position: absolute;
+      top: 50%;
+    }
+
+    .animate-float {
+      animation: simple-bob 4s ease-in-out infinite;
+    }
+    
+    .spinning-active {
+      animation: spin-disc 3s linear infinite;
+    }
+
+    /* Radar beam */
+    @keyframes radar-beam {
+      0% { transform: translate(-50%, -50%) rotate(45deg) scale(0.8); opacity: 0.8; }
+      100% { transform: translate(-50%, -50%) rotate(45deg) scale(1.8); opacity: 0; }
+    }
+
+    #rocket.radar-active::before,
+    #rocket.radar-active::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%) rotate(45deg);
+      border-radius: 50%; border: 2px solid #38bdf8; 
+      animation: radar-beam 2s linear infinite;
+      opacity: 0; z-index: -1; pointer-events: none;
+    }
+    #rocket.radar-active::after { animation-delay: 1s; }
+    #rocket.radar-active::before, #rocket.radar-active::after { width: 36px; height: 36px; }
+
+    /* Fuel Bar */
+    .fuel-bar { transition: all 0.3s ease; }
+    .fuel-full { background-color: #34d399; box-shadow: 0 0 8px rgba(52, 211, 153, 0.8); }
+    .fuel-empty { background-color: #7f1d1d; opacity: 0.4; }
+
+    .num-circle {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px; background-color: #000; color: #fff;
+      border-radius: 50%; font-size: 14px; margin-left: 4px;
+    }
+
+    /* Modal & Overlay */
+    .screen-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: #1a1a2e;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 100; transition: opacity 0.5s ease-out;
+    }
+    
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 150; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+    .modal-content { 
+      transform: scale(0.9); transition: transform 0.3s ease-out; 
+      background: #1a1a2e; border: 2px solid rgba(255,255,255,0.1);
+    }
+    .modal-overlay.active .modal-content { transform: scale(1); }
+
+    /* Konsep Note Style */
+    .concept-badge {
+        background: rgba(56, 189, 248, 0.1);
+        border: 1px dashed rgba(56, 189, 248, 0.4);
+        color: #38bdf8;
+    }
+
+    /* Transisi Tombol Mulai */
+    .start-btn-hidden {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+        pointer-events: none;
+    }
+    .start-btn-visible {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+    }
+
+    /* Efek Pulse Tombol Musik */
+    @keyframes music-pulse {
+        0%, 100% { box-shadow: 0 0 15px rgba(56, 189, 248, 0.3); border-color: rgba(56, 189, 248, 0.4); }
+        50% { box-shadow: 0 0 35px rgba(56, 189, 248, 0.8), inset 0 0 15px rgba(56, 189, 248, 0.4); border-color: rgba(56, 189, 248, 0.9); }
+    }
+    .music-btn-pulse {
+        animation: music-pulse 2s infinite;
+    }
+  </style>
+ </head>
+ <body class="h-full">
+
+  <audio id="bg-music" loop preload="auto">
+    <source src="https://github.com/dosen-uinsi/JELAJAH-GALAKSI-PERBANDINGAN/raw/refs/heads/main/Senilai%20beda,%20Berbalik%20Sama.mpeg" type="audio/mpeg">
+  </audio>
+     
+  <div id="start-screen" class="screen-overlay px-6 text-center">
+    
+    <div class="relative mb-6 mt-2 flex justify-center items-center">
+      <div class="absolute w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl animate-pulse"></div>
+      <div class="absolute w-28 h-28 bg-cyan-400/20 rounded-full blur-2xl animate-pulse" style="animation-delay: 1s;"></div>
+      <div class="text-8xl sm:text-9xl animate-float drop-shadow-[0_10px_25px_rgba(56,189,248,0.5)] relative z-10">🧑‍🚀</div>
+    </div>
+    
+    <h1 class="title-modern text-4xl sm:text-6xl font-800 mb-2 uppercase leading-tight">
+      JELAJAH GALAKSI<br>"PERBANDINGAN"
+    </h1>
+    
+    <div class="text-xs sm:text-sm font-500 text-indigo-300/80 mb-6 uppercase tracking-[0.2em]">
+      By Mathnology
+    </div>
+
+    <div class="concept-badge px-6 py-3 rounded-2xl mb-6 max-w-sm mx-auto shadow-lg">
+        <span class="text-[10px] block font-800 uppercase tracking-widest opacity-70 mb-1">Syarat Utama Misi</span>
+        <p class="text-lg sm:text-xl font-800 italic">"Senilai Beda, Berbalik Sama"</p>
+    </div>
+
+    <p class="text-gray-400 max-w-md mx-auto mb-8 text-sm sm:text-base leading-relaxed">
+      Susun rumus yang tepat agar perjalananmu mencapai Bulan berhasil. Bahan bakar penjelajahan ini sangat terbatas!
+    </p>
+
+    <div class="mb-6 flex flex-col items-center gap-3">
+      <p id="music-instruction" class="text-[10px] font-800 text-cyan-300 uppercase tracking-widest animate-bounce">
+        👇 Ketuk untuk Mengaktifkan Panel 👇
+      </p>
+      <button id="musicToggleBtn" class="w-20 h-20 rounded-full bg-slate-800/80 border-2 border-cyan-400/50 flex items-center justify-center text-6xl transition-all hover:scale-105 active:scale-95 music-btn-pulse">
+        <div id="disc-emoji" class="origin-center block drop-shadow-xl">💿</div>
+      </button>
+      <span id="music-status-text" class="text-xs font-600 text-indigo-300/80 uppercase tracking-widest">Lagu Tema: OFF</span>
+    </div>
+
+    <button id="startMissionBtn" class="start-btn-hidden px-10 py-4 rounded-full font-800 text-xl tracking-wide transition-all duration-500 hover:scale-105 active:scale-95 text-white shadow-[0_0_25px_rgba(56,189,248,0.4)]" style="background: linear-gradient(135deg, #38bdf8 0%, #4f46e5 100%); border: 1px solid rgba(255,255,255,0.2);">
+      MULAI PENJELAJAHAN
+    </button>
+  </div>
+
+  <div id="app" class="h-full w-full overflow-auto flex flex-col items-center justify-start p-6" style="display: none;">
+   
+   <div class="w-full max-w-2xl flex flex-col items-center mt-2 mb-8">
+     <h1 class="title-modern text-2xl sm:text-3xl font-800 mb-1 text-center uppercase">JELAJAH GALAKSI "PERBANDINGAN"</h1>
+     <div class="text-[10px] sm:text-xs font-500 text-indigo-300/80 mb-6 uppercase tracking-[0.2em]">By Mathnology</div>
+
+     <div class="flex items-center gap-3 mb-5 standard-panel px-5 py-2.5 rounded-full shadow-md">
+       <span class="text-gray-400 font-700 text-xs uppercase tracking-widest flex items-center gap-2">⛽ Bahan Bakar</span>
+       <div id="fuel-container" class="flex gap-1.5"></div>
+     </div>
+     
+     <div class="w-full relative px-6 py-3 standard-panel rounded-full flex items-center justify-between shadow-lg">
+       <div class="text-4xl z-10">🌍</div>
+       <div class="absolute left-16 right-16 top-1/2 -translate-y-1/2 h-1.5 bg-gray-700 rounded-full">
+         <div id="progress-fill" class="h-full bg-blue-500 rounded-full w-0 transition-all duration-1000"></div>
+         <div id="rocket" class="absolute top-1/2 -translate-x-1/2 text-3xl z-20" style="left: 0%;">🚀</div>
+       </div>
+       <div class="text-4xl z-10">🌕</div>
+     </div>
+   </div>
+   
+   <div id="mission-panel" class="standard-panel rounded-2xl p-4 mb-8 text-center max-w-md w-full shadow">
+     <div class="text-sm font-600 text-gray-400 mb-1 uppercase tracking-wider">Misi</div>
+     <div id="mode-text" class="text-2xl font-800 mb-3" style="color: #fbbf24;">Perbandingan Senilai</div>
+     <div class="text-gray-200 flex items-center justify-center flex-wrap gap-2 text-lg">
+       Susun rumus untuk mencari: 
+       <span id="target-var" class="font-800 text-white text-xl bg-white/10 px-3 py-1 rounded-lg flex items-center border border-white/10">A<span class="num-circle">1</span></span>
+     </div>
+   </div>
+
+   <div id="source" class="flex gap-4 mb-10 flex-wrap justify-center min-h-[80px]">
+    <div class="drag-item rounded-2xl w-24 h-20 flex items-center justify-center text-3xl font-700 shadow-md" draggable="true" data-value="A1" style="background: linear-gradient(135deg, #6366f1, #818cf8); color: #fff;">A<span class="num-circle">1</span></div>
+    <div class="drag-item rounded-2xl w-24 h-20 flex items-center justify-center text-3xl font-700 shadow-md" draggable="true" data-value="A2" style="background: linear-gradient(135deg, #ec4899, #f472b6); color: #fff;">A<span class="num-circle">2</span></div>
+    <div class="drag-item rounded-2xl w-24 h-20 flex items-center justify-center text-3xl font-700 shadow-md" draggable="true" data-value="B1" style="background: linear-gradient(135deg, #14b8a6, #2dd4bf); color: #fff;">B<span class="num-circle">1</span></div>
+    <div class="drag-item rounded-2xl w-24 h-20 flex items-center justify-center text-3xl font-700 shadow-md" draggable="true" data-value="B2" style="background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #fff;">B<span class="num-circle">2</span></div>
+   </div>
+
+   <div id="equation-container" class="flex items-center gap-4 sm:gap-6 flex-wrap justify-center mb-6 standard-panel p-6 rounded-3xl shadow-inner">
+    <div class="drop-zone rounded-2xl w-24 h-20 flex items-center justify-center text-3xl font-700 border-2 border-dashed" data-slot="3"></div>
+    <span class="operator text-4xl font-800 mx-2">=</span>
+    <div class="flex flex-col items-center gap-2">
+     <div class="flex gap-2">
+      <div class="drop-zone rounded-xl w-20 h-16 flex items-center justify-center text-2xl font-700 border-2 border-dashed" data-slot="0"></div>
+      <span class="text-xl font-800 self-center text-gray-500">×</span>
+      <div class="drop-zone rounded-xl w-20 h-16 flex items-center justify-center text-2xl font-700 border-2 border-dashed" data-slot="1"></div>
+     </div>
+     <div class="rounded-full bg-blue-400" style="width: 100%; min-width: 140px; height: 3px;"></div>
+     <div class="drop-zone rounded-xl w-20 h-16 flex items-center justify-center text-2xl font-700 border-2 border-dashed" data-slot="2"></div>
+    </div>
+   </div>
+
+   <div id="result" class="text-lg sm:text-xl font-600 h-8 flex items-center justify-center text-center px-4 mb-4"></div>
+  </div>
+
+  <div id="game-modal" class="modal-overlay">
+    <div class="modal-content p-8 rounded-3xl flex flex-col items-center text-center max-w-sm shadow-2xl">
+      <div id="modal-emoji" class="text-8xl mb-4">🧑‍🚀</div>
+      <h2 id="modal-title" class="text-3xl font-800 mb-2">Misi Berhasil!</h2>
+      <p id="modal-desc" class="text-gray-300 mb-6 text-lg">Mendarat di Bulan!</p>
+      <button id="restartBtn" class="px-8 py-3 rounded-xl font-700 text-lg transition-all hover:scale-105 active:scale-95 bg-blue-600 text-white shadow-md">Main Lagi</button>
+    </div>
+  </div>
+
+  <script>
+    const bgMusic = document.getElementById('bg-music');
+    const musicToggleBtn = document.getElementById('musicToggleBtn');
+    const discEmoji = document.getElementById('disc-emoji');
+    const musicStatusText = document.getElementById('music-status-text');
+    let isMusicPlaying = false;
+    let hasInteractedWithMusic = false; 
+    
+    bgMusic.volume = 0.5; 
+
+    musicToggleBtn.addEventListener('click', () => {
+        if (!hasInteractedWithMusic) {
+            const startBtn = document.getElementById('startMissionBtn');
+            const instructionText = document.getElementById('music-instruction');
+            
+            startBtn.classList.remove('start-btn-hidden');
+            startBtn.classList.add('start-btn-visible');
+            
+            musicToggleBtn.classList.remove('music-btn-pulse');
+            instructionText.style.display = 'none';
+            
+            hasInteractedWithMusic = true;
+        }
+
+        if (isMusicPlaying) {
+            bgMusic.pause();
+            discEmoji.classList.remove('spinning-active');
+            musicStatusText.textContent = 'LAGU TEMA: OFF';
+            musicToggleBtn.classList.remove('shadow-[0_0_35px_rgba(56,189,248,0.8)]');
+            isMusicPlaying = false;
+        } else {
+            bgMusic.play().then(() => {
+                discEmoji.classList.add('spinning-active');
+                musicStatusText.textContent = 'LAGU TEMA: ON 🎵';
+                musicToggleBtn.classList.add('shadow-[0_0_35px_rgba(56,189,248,0.8)]');
+                isMusicPlaying = true;
+            }).catch(e => {
+                alert("Browser memblokir pemutaran audio otomatis. Silakan klik lagi.");
+            });
+        }
+    });
+
+    document.getElementById('startMissionBtn').addEventListener('click', () => {
+        initAudio();
+        playSound('correct'); 
+
+        if (isMusicPlaying) {
+            bgMusic.pause();
+            isMusicPlaying = false;
+            discEmoji.classList.remove('spinning-active');
+            musicStatusText.textContent = 'LAGU TEMA: OFF';
+            musicToggleBtn.classList.remove('shadow-[0_0_35px_rgba(56,189,248,0.8)]');
+        }
+
+        const startScreen = document.getElementById('start-screen');
+        const mainApp = document.getElementById('app');
+        
+        startScreen.style.opacity = '0';
+        
+        setTimeout(() => {
+            startScreen.style.display = 'none';
+            mainApp.style.display = 'flex';
+            resetGame();
+        }, 500); 
+    });
+
+    const TARGET_SCORE = 3;
+    const MAX_FUEL = 2;
+    let score = 0, fuel = MAX_FUEL, isTransitioning = false; 
+    const VARIABLES = ['A1', 'A2', 'B1', 'B2'], MODES = ['senilai', 'berbalik'];
+    let currentMode = 'senilai', currentTarget = 'A1', draggedEl = null, selectedEl = null, slots = {};
+    let audioCtx;
+
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playSound(type) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+      if (type === 'drop') {
+        osc.frequency.setValueAtTime(600, now); osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
+        gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(); osc.stop(now + 0.1);
+      } else if (type === 'correct') {
+        osc.frequency.setValueAtTime(500, now); osc.frequency.setValueAtTime(800, now + 0.1); 
+        gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start(); osc.stop(now + 0.4);
+      } else if (type === 'error') {
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(120, now);
+        gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.start(); osc.stop(now + 0.2);
+      } else if (type === 'win') {
+        osc.type = 'square'; [523, 659, 783, 1046].forEach((f, i) => osc.frequency.setValueAtTime(f, now + (i*0.1)));
+        gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0, now + 0.6);
+        osc.start(); osc.stop(now + 0.6);
+      } else if (type === 'lose') {
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, now); osc.frequency.exponentialRampToValueAtTime(40, now + 0.6);
+        gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.6);
+        osc.start(); osc.stop(now + 0.6);
+      }
+    }
+
+    function updateProgress() {
+      const percentage = (score / TARGET_SCORE) * 100;
+      document.getElementById('progress-fill').style.width = `${percentage}%`;
+      const rocketEl = document.getElementById('rocket');
+      rocketEl.style.left = `${percentage}%`;
+      if (score > 0) rocketEl.classList.add('radar-active');
+      else rocketEl.classList.remove('radar-active');
+    }
+
+    function updateFuel() {
+      const container = document.getElementById('fuel-container');
+      container.innerHTML = '';
+      for(let i = 0; i < MAX_FUEL; i++) {
+        container.innerHTML += `<div class="fuel-bar ${i < fuel ? 'fuel-full' : 'fuel-empty'} w-8 h-3.5 rounded-sm"></div>`;
+      }
+    }
+
+    function showModal(type) {
+      const modal = document.getElementById('game-modal'), emoji = document.getElementById('modal-emoji'), 
+            title = document.getElementById('modal-title'), desc = document.getElementById('modal-desc');
+      if (type === 'win') {
+        emoji.textContent = '🧑‍🚀'; title.textContent = 'Misi Berhasil!'; title.style.color = '#34d399';
+        desc.textContent = 'Selamat! Kamu menguasai konsep perbandingan.'; playSound('win');
+      } else {
+        emoji.textContent = '☄️'; title.textContent = 'Misi Gagal!'; title.style.color = '#f87171';
+        // PERUBAHAN TEKS MISI GAGAL DI SINI
+        desc.textContent = 'Bahan bakar habis dan roket terkena meteor. Pelajari konsep lagi!'; playSound('lose');
+      }
+      modal.classList.add('active');
+    }
+
+    document.getElementById('restartBtn').addEventListener('click', () => {
+      document.getElementById('game-modal').classList.remove('active');
+      resetGame();
+    });
+
+    function resetGame() {
+      score = 0; fuel = MAX_FUEL;
+      updateProgress(); updateFuel();
+      resetBoard();
+    }
+
+    function randomizeProblem() {
+      currentMode = MODES[Math.floor(Math.random() * MODES.length)];
+      currentTarget = VARIABLES[Math.floor(Math.random() * VARIABLES.length)];
+      const modeTextEl = document.getElementById('mode-text');
+      modeTextEl.textContent = currentMode === 'senilai' ? 'Perbandingan Senilai' : 'Perbandingan Berbalik Nilai';
+      modeTextEl.style.color = currentMode === 'senilai' ? '#4ade80' : '#f472b6'; 
+      document.getElementById('target-var').innerHTML = getDisplayFormat(currentTarget);
+      updateTargetEffect();
+      isTransitioning = false;
+    }
+
+    function updateTargetEffect() {
+      document.querySelectorAll('.drag-item').forEach(el => {
+        el.classList.remove('is-target'); 
+        if (el.dataset.value === currentTarget) el.classList.add('is-target'); 
+      });
+    }
+
+    function getDisplayFormat(val) {
+      if(!val) return '';
+      return `${val.charAt(0)}<span class="num-circle">${val.charAt(1)}</span>`;
+    }
+
+    function getOriginalBackground(val) {
+      const el = document.querySelector(`.drag-item[data-value="${val}"]`);
+      return el ? getComputedStyle(el).background : '';
+    }
+
+    document.querySelectorAll('.drag-item').forEach(el => {
+      el.addEventListener('dragstart', e => {
+        if(isTransitioning) { e.preventDefault(); return; }
+        draggedEl = el; deselectItem();
+        setTimeout(() => el.style.opacity = '0.4', 0);
+      });
+      el.addEventListener('dragend', () => { el.style.opacity = '1'; draggedEl = null; });
+      el.addEventListener('click', () => {
+        if(isTransitioning) return;
+        initAudio(); 
+        if (selectedEl === el) deselectItem();
+        else { deselectItem(); selectedEl = el; el.classList.add('selected'); }
+      });
+    });
+
+    function deselectItem() { if (selectedEl) { selectedEl.classList.remove('selected'); selectedEl = null; } }
+
+    function placeItemInSlot(zone, val) {
+      const slotIdx = zone.dataset.slot;
+      for (const [k, v] of Object.entries(slots)) {
+        if (v === val) { 
+          const prevZone = document.querySelector(`[data-slot="${k}"]`);
+          prevZone.innerHTML = ''; prevZone.classList.remove('filled');
+          delete slots[k];
+        }
+      }
+      if (slots[slotIdx]) {
+        const prevItem = document.querySelector(`.drag-item[data-value="${slots[slotIdx]}"]`);
+        if (prevItem) prevItem.style.display = 'flex';
+      }
+      slots[slotIdx] = val; zone.innerHTML = getDisplayFormat(val); zone.classList.add('filled', 'pop');
+      zone.style.background = getOriginalBackground(val);
+      const sourceItem = document.querySelector(`.drag-item[data-value="${val}"]`);
+      if (sourceItem) sourceItem.style.display = 'none';
+      playSound('drop'); setTimeout(() => zone.classList.remove('pop'), 300);
+      checkEquation();
+    }
+
+    document.querySelectorAll('.drop-zone').forEach(zone => {
+      zone.addEventListener('dragover', e => { if(!isTransitioning) { e.preventDefault(); zone.classList.add('drag-over'); }});
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+      zone.addEventListener('drop', e => {
+        if(isTransitioning) return;
+        e.preventDefault(); zone.classList.remove('drag-over'); initAudio();
+        if (draggedEl) placeItemInSlot(zone, draggedEl.dataset.value);
+      });
+      zone.addEventListener('click', () => {
+        if(isTransitioning) return;
+        const slotIdx = zone.dataset.slot;
+        if (selectedEl) { placeItemInSlot(zone, selectedEl.dataset.value); deselectItem(); }
+        else if (slots[slotIdx]) {
+          const itemVal = slots[slotIdx];
+          const item = document.querySelector(`.drag-item[data-value="${itemVal}"]`);
+          if (item) item.style.display = 'flex';
+          delete slots[slotIdx]; zone.innerHTML = ''; zone.classList.remove('filled');
+          zone.style.background = 'transparent'; document.getElementById('result').innerHTML = '';
+          playSound('drop'); 
+        }
+      });
+    });
+
+    function checkEquation() {
+      const resultEl = document.getElementById('result');
+      if (Object.keys(slots).length < 4) { resultEl.innerHTML = ''; return; }
+      const leftSlot = slots['3'], bottomSlot = slots['2'];
+      if (leftSlot !== currentTarget) { handleMistake(`Target harus di sebelah kiri.`); return; }
+      const expectedBottom = currentMode === 'senilai' ? 
+        { A1: 'B2', B2: 'A1', A2: 'B1', B1: 'A2' }[currentTarget] : 
+        { A1: 'B1', B1: 'A1', A2: 'B2', B2: 'A2' }[currentTarget];
+      if (bottomSlot === expectedBottom) {
+        score++; updateProgress();
+        if (score >= TARGET_SCORE) {
+          resultEl.innerHTML = `✅ <span class="text-emerald-400">Misi Sukses!</span>`;
+          isTransitioning = true; setTimeout(() => showModal('win'), 700);
+        } else {
+          resultEl.innerHTML = `✅ <span class="text-emerald-400">Benar! Memuat level baru...</span>`;
+          playSound('correct'); isTransitioning = true; setTimeout(() => resetBoard(), 1400);
+        }
+      } else { handleMistake(`Penyebut salah.`); }
+    }
+
+    function handleMistake(msg) {
+      fuel--; updateFuel(); triggerShakeError();
+      const resultEl = document.getElementById('result');
+      if (fuel <= 0) {
+        resultEl.innerHTML = `❌ <span class="text-red-400">Gagal!</span>`;
+        isTransitioning = true; setTimeout(() => showModal('lose'), 700);
+      } else { resultEl.innerHTML = `❌ <span class="text-red-400">${msg}</span>`; }
+    }
+
+    function triggerShakeError() {
+      const eq = document.getElementById('equation-container');
+      eq.classList.remove('shake-anim'); void eq.offsetWidth; eq.classList.add('shake-anim');
+      playSound('error');
+    }
+
+    function resetBoard() {
+      deselectItem();
+      for (const [k] of Object.entries(slots)) {
+        const zone = document.querySelector(`[data-slot="${k}"]`);
+        zone.innerHTML = ''; zone.classList.remove('filled'); zone.style.background = 'transparent';
+      }
+      for (const key in slots) delete slots[key];
+      document.querySelectorAll('.drag-item').forEach(el => el.style.display = 'flex');
+      document.getElementById('result').innerHTML = '';
+      randomizeProblem();
+    }
+  </script>
+ </body>
+</html>
