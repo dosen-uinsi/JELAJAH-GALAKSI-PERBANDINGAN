@@ -32,7 +32,7 @@
 
     /* Drag Items */
     .drag-item {
-      cursor: pointer; /* Ubah ke pointer karena di HP kita lebih fokus ke klik/tap */
+      cursor: pointer; 
       user-select: none;
       transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
     }
@@ -43,11 +43,14 @@
       .drag-item:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
     }
     
+    /* --- EFEK BLOK TERPILIH (STATIS/TIDAK BERGERAK) --- */
     .drag-item.selected {
       transform: scale(1.1);
-      box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.8), 0 8px 20px rgba(0,0,0,0.4);
-      z-index: 10;
+      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.8), 0 10px 25px rgba(0,0,0,0.5);
+      border: 2px solid #fff;
+      z-index: 20;
     }
+    /* -------------------------------------------------- */
 
     /* Efek Khusus Elemen Target (Glowing Gold) */
     @keyframes breath-glow-gold {
@@ -67,12 +70,17 @@
       border-color: rgba(255,255,255,0.2);
     }
     .drop-zone:hover:not(.filled) { background: rgba(255,255,255,0.08); }
-    .drop-zone.drag-over {
-      border-color: #fbbf24 !important;
-      background: rgba(251, 191, 36, 0.1) !important;
-      transform: scale(1.05);
-    }
     .drop-zone.filled:active { opacity: 0.7; transform: scale(0.95); }
+
+    /* Petunjuk Kotak Kosong saat ada blok yang dipilih */
+    @keyframes drop-hint-pulse {
+        0%, 100% { border-color: rgba(56,189,248,0.4); background: rgba(56,189,248,0.05); }
+        50% { border-color: rgba(56,189,248,1); background: rgba(56,189,248,0.25); transform: scale(1.05); box-shadow: 0 0 15px rgba(56,189,248,0.5); }
+    }
+    body.has-selection .drop-zone:not(.filled) {
+        animation: drop-hint-pulse 1.2s ease-in-out infinite;
+        border-style: dashed;
+    }
 
     /* Animations */
     @keyframes pulse-soft {
@@ -256,8 +264,10 @@
       <p id="music-instruction" class="text-[9px] sm:text-[10px] font-800 text-cyan-300 uppercase tracking-widest animate-bounce text-center">
         👇 Ketuk untuk Mengaktifkan 👇
       </p>
-      <button id="musicToggleBtn" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-800/80 border-2 border-cyan-400/50 flex items-center justify-center text-4xl sm:text-6xl transition-all hover:scale-105 active:scale-95 music-btn-pulse">
-        <span id="disc-emoji" class="origin-center block drop-shadow-xl leading-none">💿</span>
+      <button id="musicToggleBtn" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-800/80 border-2 border-cyan-400/50 flex items-center justify-center text-4xl sm:text-6xl transition-all hover:scale-105 active:scale-95 music-btn-pulse overflow-hidden">
+        <div class="w-full h-full flex items-center justify-center">
+            <span id="disc-emoji" class="flex items-center justify-center w-[1em] h-[1em] origin-center drop-shadow-xl" style="line-height: 0;">💿</span>
+        </div>
       </button>
       <span id="music-status-text" class="text-[10px] sm:text-xs font-600 text-indigo-300/80 uppercase tracking-widest">Lagu Tema: OFF</span>
     </div>
@@ -475,7 +485,15 @@
 
       osc.connect(gain); gain.connect(audioCtx.destination);
       
-      if (type === 'drop') {
+      // EFEK AUDIO BARU: 'select' saat item dipilih
+      if (type === 'select') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(); osc.stop(now + 0.1);
+      } else if (type === 'drop') {
         osc.frequency.setValueAtTime(600, now); osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
         gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
         osc.start(); osc.stop(now + 0.1);
@@ -522,7 +540,7 @@
       if (type === 'win') {
         emoji.textContent = '🌕'; 
         title.innerHTML = 'Misi <span class="text-emerald-400">Berhasil!</span>'; 
-        desc.textContent = 'Selamat! Kamu mendarat di Bulan dan menguasai konsep perbandingan.'; 
+        desc.textContent = 'Selamat! Kamu menguasai konsep perbandingan.'; 
         playSound('win');
         launchConfetti(); 
       } else {
@@ -591,12 +609,27 @@
       el.addEventListener('click', () => {
         if(isTransitioning) return;
         initAudio(); 
-        if (selectedEl === el) deselectItem();
-        else { deselectItem(); selectedEl = el; el.classList.add('selected'); }
+        if (selectedEl === el) {
+            deselectItem(); 
+            playSound('drop');
+        } else { 
+            deselectItem(); 
+            selectedEl = el; 
+            el.classList.add('selected'); 
+            // Tambahkan flag ke body agar drop-zone merespon
+            document.body.classList.add('has-selection'); 
+            playSound('select'); // Bunyi saat item dipilih
+        }
       });
     });
 
-    function deselectItem() { if (selectedEl) { selectedEl.classList.remove('selected'); selectedEl = null; } }
+    function deselectItem() { 
+        if (selectedEl) { 
+            selectedEl.classList.remove('selected'); 
+            selectedEl = null; 
+            document.body.classList.remove('has-selection'); // Hilangkan flag
+        } 
+    }
 
     function placeItemInSlot(zone, val) {
       const slotIdx = zone.dataset.slot;
